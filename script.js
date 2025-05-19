@@ -10,14 +10,11 @@ fetch(CSV_URL)
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i].trim();
 
-            // Первый элемент до первой запятой — ID
             const firstCommaIndex = line.indexOf(',');
             const id = line.slice(0, firstCommaIndex).trim();
 
-            // Остальное — текст
             const rest = line.slice(firstCommaIndex + 1);
 
-            // Делим по '","' в случае необходимости
             var parts = rest.split(',');
             if (parts.length > 3) {
                 parts = rest.split('","');
@@ -27,7 +24,6 @@ fetch(CSV_URL)
                 }
             }
 
-            // Убираем обрамляющие кавычки, если есть
             const es = parts[0].replace(/^"/, '').replace(/"$/, '');
             const en = parts[1].replace(/^"/, '').replace(/"$/, '');
 
