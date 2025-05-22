@@ -51,13 +51,22 @@ fetch(CSV_URL)
             container.appendChild(div);
         });
 
+        let currentAudio = null; // Глобальная переменная для хранения текущего аудио
+
         document.querySelectorAll('.sentence').forEach(sentence => {
             sentence.addEventListener('click', () => {
                 const audioSrc = sentence.dataset.audio;
                 if (!audioSrc) return;
 
-                const audio = new Audio(audioSrc);
-                audio.play().catch(e => console.error('Ошибка воспроизведения:', e));
+                // Если уже воспроизводится аудио, остановим его
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                }
+
+                // Создаем и воспроизводим новое аудио
+                currentAudio = new Audio(audioSrc);
+                currentAudio.play().catch(e => console.error('Ошибка воспроизведения:', e));
             });
         });
     })
