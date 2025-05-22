@@ -1,4 +1,4 @@
-// div.dataset.audio = "audio/" + id + ".wav";
+// div.dataset.audio = "audio/" + id + ".aif";
 const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBiJoKZ5ZzdsyK1OXNNS3AvUx1e8d7N0c4RxXL8TQ8HQ2sgid-sTH5FdmXdMTkB_0Wl4_dfp7SJUAz/pub?output=csv';
 // const CSV_URL = "3,\"Mientras me lavo, me miro en el espejo grande que tengo en el baño.\",\"While I'm washing up, I check myself out in the big mirror I’ve got in the bathroom.\"";
 fetch(CSV_URL)
@@ -36,7 +36,7 @@ fetch(CSV_URL)
         data.forEach(([id, es, en]) => {
             const div = document.createElement('div');
             div.className = 'sentence';
-            div.dataset.audio = "audio/" + id + ".wav";
+            div.dataset.audio = "audio/" + id + ".aif";
 
             const esP = document.createElement('p');
             esP.className = 'es';
