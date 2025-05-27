@@ -79,7 +79,6 @@ async function loadSheet(sheetId) {
         });
         storyContainer.style.display = 'block';
 
-        // Прокрутка вверх на мобильных
         if (window.innerWidth < 768) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
