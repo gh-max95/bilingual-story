@@ -1,26 +1,74 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     font-size: 0.8rem;
     color: #454545;
     background: #e9e9e9;
-    padding: 1rem;
-    display: flex;
-    justify-content: center;
+    min-height: 100vh;
 }
 
-.note-container {
-    background: #ffffff ;
+/* Левое меню */
+.menu {
+    width: 220px;
+    background: #f5f5f5;
+    padding: 1rem;
+    box-shadow: 8px 8px 30px rgba(0, 0, 0, 0.2);
+    overflow-y: auto;
+    border-right: 1px solid #ddd;
+    flex-shrink: 0;
+}
+
+.menu-button {
+    background: #ffffff;
+    border: 1px solid #d2d2d2;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    font-weight: bold;
+    text-align: center;
+    font-size: 1rem;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.menu-button:hover {
+    background: #e6e6e6;
+    transform: translateX(2px);
+}
+
+/* Правая часть */
+.content {
+    flex-grow: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 100%;
+}
+
+.story {
+    background: #ffffff;
     border-radius: 12px;
     box-shadow: 8px 8px 30px rgba(0, 0, 0, 0.2);
-    padding: 1rem;
+    padding: 1.5rem;
     max-width: 700px;
     width: 100%;
 }
 
-h1 {
+.story h1 {
     text-align: center;
-    font-size: 1.3rem;
-    margin-bottom: 1rem;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .sentence {
@@ -35,11 +83,13 @@ h1 {
 }
 
 .sentence:hover {
-    background: #e6e6e6;
+    background: #f1f1f1;
 }
 
 .sentence p {
-    margin: 0.3rem 0;
+    margin: 0.4rem 0;
+    line-height: 1.4;
+    font-size: 0.8rem;
 }
 
 .es {
@@ -50,32 +100,55 @@ h1 {
     font-style: italic;
 }
 
-.sentence p.highlight {
-    background: yellow;
-    transition: background 0.3s;
+/* Scrollbars */
+.menu::-webkit-scrollbar,
+.content::-webkit-scrollbar {
+    width: 6px;
+}
+.menu::-webkit-scrollbar-thumb,
+.content::-webkit-scrollbar-thumb {
+    background-color: #c2c2c2;
+    border-radius: 3px;
+}
+.menu::-webkit-scrollbar-track,
+.content::-webkit-scrollbar-track {
+    background-color: #f0f0f0;
 }
 
-@media (max-width: 600px) {
+/* Мобильная адаптация (iPhone < 430px) */
+@media (max-width: 768px) {
     body {
+        flex-direction: column;
+    }
+
+    .menu {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        border-bottom: 1px solid #ccc;
+        box-shadow: none;
         padding: 0.5rem;
     }
 
-    .note-container {
+    .menu-button {
+        flex: 1 1 48%;
+        margin: 0.25rem;
+        font-size: 1rem;
+        padding: 0.9rem;
+    }
+
+    .content {
+        flex-grow: 1;
         padding: 1rem;
+        overflow-y: visible;
+        height: auto;
+    }
+
+    .story {
         border-radius: 0;
         box-shadow: none;
-        max-width: 100%;
-    }
-
-    h1 {
-        font-size: 1.1rem;
-    }
-
-    .sentence {
-        padding: 0.8rem;
-    }
-
-    .sentence p {
-        font-size: 0.9rem;
+        padding: 1rem;
+        width: 100%;
     }
 }
