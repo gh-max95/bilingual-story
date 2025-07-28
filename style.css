@@ -42,6 +42,10 @@ html, body {
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: flex-start; /* Изменено с center на flex-start */
+    padding-left: 0.5rem; /* Добавим небольшой отступ слева */
+    position: relative;
+    height: 3.5rem;
 }
 
 .burger-button {
@@ -63,10 +67,17 @@ html, body {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: calc(100% - 8rem); /* Оставляем место для кнопок */
+    margin: 0;
+    pointer-events: none; /* Чтобы клики проходили сквозь заголовок */
 }
 
 .toggle {
-    margin: 0.75rem;
+    margin: 0.75rem 0.75rem 0.75rem 0; /* Уменьшаем правый отступ */
     position: relative;
     justify-content: center;
     height: 1.8rem;
@@ -78,7 +89,7 @@ html, body {
     border-radius: 1rem;
     background: #d2d2d2;
     box-shadow: -10px 0 15px -5px rgba(0, 0, 0, 0.15) inset;
-    z-index: 1000;
+    z-index: 2;
 }
 
 .labels {
@@ -94,7 +105,7 @@ html, body {
     font-size: 0.7rem;
     transform: translateY(-50%);
     pointer-events: none;
-    z-index: 1000;
+    z-index: 2;
 }
 
 .handle {
@@ -112,7 +123,7 @@ html, body {
     cursor: pointer;
     transition: left 0.3s ease;
     box-shadow: -5px 0 15px -5px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
+    z-index: 2;
 }
 
 .toggle.active .handle {
@@ -196,6 +207,13 @@ body.blur-es .story .es {
         max-height: 3.5rem;
         width: 100%;
         box-shadow: none;
+        transition: max-height 0.3s ease;
+        overflow: hidden;
+    }
+
+    .menu-button {
+        display: block;
+        padding: 0.5rem 1rem;
     }
 
     .burger-button {
@@ -214,5 +232,37 @@ body.blur-es .story .es {
     .sentence {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .inner-menu {position: relative;
+        justify-content: flex-start; /* Изменено с space-between */
+        padding: 0 1rem;
+        height: 3.5rem;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+    }
+
+    .inner-menu-title {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: auto;
+        max-width: calc(100% - 8rem);
+        margin: 0;
+        padding: 0;
+        font-size: 1.5rem;
+        pointer-events: none;
+    }
+
+    .toggle {
+        order: 0; /* Явно указываем порядок */
+        margin: 0.75rem 0.5rem 0.75rem 0;
+        z-index: 2; /* Поднимаем над заголовком */
+    }
+
+    .burger-button {
+        order: 2; /* Явно указываем порядок */
+        margin-left: auto; /* Прижимаем к правому краю */
     }
 }

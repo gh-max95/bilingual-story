@@ -1,266 +1,374 @@
-const SHEET_IDS = ['1', '2', '3'];
-
-const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBiJoKZ5ZzdsyK1OXNNS3AvUx1e8d7N0c4RxXL8TQ8HQ2sgid-sTH5FdmXdMTkB_0Wl4_dfp7SJUAz/pub?output=csv&gid=';
-
-const GID_MAP = {
-    '1': '0',
-    '2': '1876475411',
-    '3': '1240970952',
+/**
+ * Конфигурация приложения
+ */
+const CONFIG = {
+    SHEET_IDS: ['1', '2', '3'],
+    BASE_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSBiJoKZ5ZzdsyK1OXNNS3AvUx1e8d7N0c4RxXL8TQ8HQ2sgid-sTH5FdmXdMTkB_0Wl4_dfp7SJUAz/pub?output=csv&gid=',
+    GID_MAP: {
+        '1': '0',
+        '2': '1876475411',
+        '3': '1240970952',
+    }
 };
 
-let menuIsVisible = window.innerWidth > 768;
-let blurOn = false;
+/**
+ * Состояние приложения
+ */
+const APP_STATE = {
+    menuIsVisible: window.innerWidth > 768,
+    blurOn: false,
+    currentAudio: null,
+    isMobile: window.innerWidth < 768
+};
 
-(async function init() {
+/**
+ * Инициализация приложения
+ */
+(async function initApp() {
+    initBurgerMenu();
+    initWindowResizeHandler();
+    initGlobalToggle();
+    initAudioClickHandler();
 
-    const burger = document.querySelector('.burger-button');
-    burger.innerHTML = '&#9776;';
-    burger.addEventListener('click', () => {
-        toggleMenuButtons();
-    });
-    const innerMenu = document.querySelector('.inner-menu');
-    innerMenu.display = 'none';
-
-    let currentAudio = null;
-    let isMobileNow = window.innerWidth < 768;
-    blurOn = false;
-
-    window.addEventListener('resize', () => {
-        const nowMobile = window.innerWidth < 768;
-        if (nowMobile !== isMobileNow) {
-            isMobileNow = nowMobile;
-
-            if (nowMobile) {
-                menuIsVisible = false;
-                toggleMenuButtons();
-            } else {
-                menuIsVisible = true;
-                toggleMenuButtons();
-                requestAnimationFrame(() => {
-                    toggleMenuButtons();
-                });
-            }
-
-            const activeStory = document.querySelector('.story[style*="display: flex"]');
-            if (activeStory) {
-                const title = activeStory.querySelector('h1');
-                const innerMenuTitle = document.querySelector('.inner-menu-title');
-
-                if (nowMobile) {
-                    innerMenuTitle.textContent = title.textContent;
-                    title.textContent = '';
-                } else {
-                    title.textContent = innerMenuTitle.textContent;
-                    innerMenuTitle.textContent = '';
-                }
-            }
-        }
-    });
-
-    document.body.classList.toggle('blur-es', blurOn);
-
-    document.querySelector('.content').addEventListener('click', (e) => {
-        const vertical = e.target.closest('.vertical-sentence');
-        if (!vertical) return;
-
-        const audioSrc = vertical.dataset.audio;
-        if (!audioSrc) return;
-
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio.currentTime = 0;
-        }
-
-        currentAudio = new Audio(audioSrc);
-        currentAudio.play().catch(e => console.error('Ошибка воспроизведения:', e));
-    });
-
-    document.querySelector('.toggle').addEventListener('click', function () {
-        this.classList.toggle('active');
-        blurOn = !blurOn;
-        document.body.classList.toggle('blur-es', blurOn);
-        syncLocalTogglesToGlobal();
-    });
-
-    for (let sheetId of SHEET_IDS) {
-        const menuBtn = await loadSheet(sheetId);
-
-        if (sheetId === '1' && menuBtn) {
-            menuBtn.click();
+    // Загружаем все таблицы и активируем первую по умолчанию
+    for (let sheetId of CONFIG.SHEET_IDS) {
+        const menuButton = await loadSheetData(sheetId);
+        if (sheetId === '1' && menuButton) {
+            menuButton.click();
         }
     }
+
+    updateMenuVisibility();
 })();
 
-function parseCsvLine(line) {
-    const match = line.match(/^(\d+),(?:"((?:[^"]|"")*)"|([^,]+)),(?:"((?:[^"]|"")*)"|(.+))$/);
+/**
+ * Инициализация бургер-меню
+ */
+function initBurgerMenu() {
+    const burgerButton = document.querySelector('.burger-button');
+    burgerButton.innerHTML = '&#9776;';
+    burgerButton.addEventListener('click', () => {
+        APP_STATE.menuIsVisible = !APP_STATE.menuIsVisible;
+        updateMenuVisibility();
+    });
 
-    if (!match) {
-        return [null, "-error-", "-error-"];
+    // Удаляем лишние стили, так как теперь всё управляется CSS
+    const innerMenuTitle = document.querySelector('.inner-menu-title');
+    innerMenuTitle.style.textAlign = 'center';
+}
+
+/**
+ * Инициализация обработчика изменения размера окна
+ */
+function initWindowResizeHandler() {
+    window.addEventListener('resize', () => {
+        const nowMobile = window.innerWidth < 768;
+        if (nowMobile !== APP_STATE.isMobile) {
+            APP_STATE.isMobile = nowMobile;
+            APP_STATE.menuIsVisible = !nowMobile; // На десктопе меню всегда видимо
+
+            updateMenuVisibility();
+            updateActiveStoryTitle();
+        }
+    });
+}
+
+/**
+ * Обновление заголовка активной истории при изменении размера
+ */
+function updateActiveStoryTitle() {
+    const activeStory = document.querySelector('.story[style*="display: flex"]');
+    if (!activeStory) return;
+
+    const title = activeStory.querySelector('h1');
+    const innerMenuTitle = document.querySelector('.inner-menu-title');
+
+    if (APP_STATE.isMobile) {
+        innerMenuTitle.textContent = title.textContent;
+        title.textContent = '';
+    } else {
+        title.textContent = innerMenuTitle.textContent;
+        innerMenuTitle.textContent = '';
+    }
+}
+
+/**
+ * Инициализация глобального переключателя размытия
+ */
+function initGlobalToggle() {
+    document.body.classList.toggle('blur-es', APP_STATE.blurOn);
+
+    document.querySelector('.toggle').addEventListener('click', function() {
+        this.classList.toggle('active');
+        APP_STATE.blurOn = !APP_STATE.blurOn;
+        document.body.classList.toggle('blur-es', APP_STATE.blurOn);
+        syncLocalTogglesToGlobal();
+    });
+}
+
+/**
+ * Инициализация обработчика кликов по аудио
+ */
+function initAudioClickHandler() {
+    document.querySelector('.content').addEventListener('click', (e) => {
+        const sentenceElement = e.target.closest('.vertical-sentence');
+        if (!sentenceElement) return;
+
+        const audioSrc = sentenceElement.dataset.audio;
+        if (!audioSrc) return;
+
+        playAudio(audioSrc);
+    });
+}
+
+/**
+ * Воспроизведение аудио
+ * @param {string} audioSrc - Путь к аудиофайлу
+ */
+function playAudio(audioSrc) {
+    if (APP_STATE.currentAudio) {
+        APP_STATE.currentAudio.pause();
+        APP_STATE.currentAudio.currentTime = 0;
     }
 
-    const id = match[1].trim();
+    APP_STATE.currentAudio = new Audio(audioSrc);
+    APP_STATE.currentAudio.play().catch(e => console.error('Ошибка воспроизведения:', e));
+}
 
+/**
+ * Обновление видимости меню
+ */
+function updateMenuVisibility() {
+    const menuButtons = document.querySelectorAll('.menu-button');
+    const menu = document.querySelector('.menu');
+    const innerMenuTitle = document.querySelector('.inner-menu-title');
+
+    menuButtons.forEach(button => {
+        const isCurrentStory = innerMenuTitle.textContent === button.textContent;
+
+        // На десктопе показываем все кнопки, на мобиле скрываем текущую
+        if (window.innerWidth >= 768) {
+            button.style.display = 'block';
+        } else {
+            button.style.display = APP_STATE.menuIsVisible && !isCurrentStory ? 'block' : 'none';
+        }
+    });
+
+    // Настройка стилей меню в зависимости от платформы
+    if (window.innerWidth >= 768) {
+        menu.style.maxHeight = '100vh';
+        menu.style.height = '100vh';
+        menu.style.overflowY = 'auto';
+    } else {
+        menu.style.maxHeight = APP_STATE.menuIsVisible ? '100vh' : '3.5rem';
+        menu.style.overflowY = APP_STATE.menuIsVisible ? 'auto' : 'hidden';
+    }
+}
+
+/**
+ * Парсинг строки CSV
+ * @param {string} line - Строка CSV
+ * @returns {Array} [id, esText, enText]
+ */
+function parseCsvLine(line) {
+    const match = line.match(/^(\d+),(?:"((?:[^"]|"")*)"|([^,]+)),(?:"((?:[^"]|"")*)"|(.+))$/);
+    if (!match) return [null, "-error-", "-error-"];
+
+    const id = match[1].trim();
     const esRaw = match[2] ?? match[3] ?? "";
     const enRaw = match[4] ?? match[5] ?? "";
 
+    // Удаляем двойные кавычки и обрезаем пробелы
     const es = esRaw.replace(/""/g, '"').trim();
     const en = enRaw.replace(/""/g, '"').trim();
 
     return [id, es, en];
 }
 
-async function loadSheet(sheetId) {
-    const gid = GID_MAP[sheetId];
-    const url = `${BASE_URL}${gid}`;
-    const res = await fetch(url);
-    const csv = await res.text();
-    const lines = csv.trim().split('\n');
+/**
+ * Загрузка данных из таблицы
+ * @param {string} sheetId - ID таблицы
+ * @returns {HTMLElement} Кнопка меню
+ */
+async function loadSheetData(sheetId) {
+    const gid = CONFIG.GID_MAP[sheetId];
+    const url = `${CONFIG.BASE_URL}${gid}`;
+    const response = await fetch(url);
+    const csvData = await response.text();
+    const lines = csvData.trim().split('\n');
 
-    if (lines.length < 4) return;
+    if (lines.length < 4) return null;
 
     const title = lines[0].split(',')[0].trim();
+    const storyElement = createStoryElement(sheetId, title);
+    const menuButton = createMenuButton(title, storyElement);
 
-    const storyContainer = document.createElement('section');
-    storyContainer.className = 'story';
-    storyContainer.dataset.storyId = sheetId;
-    storyContainer.style.display = 'none'; // скрыт по умолчанию
+    // Создаем элементы для каждой строки данных
+    for (let i = 3; i < lines.length; i++) {
+        const line = lines[i].trim();
+        const [id, esText, enText] = parseCsvLine(line);
+
+        if (!id || !esText || !enText || esText === '-error-') continue;
+
+        const sentenceElement = createSentenceElement(sheetId, id, esText, enText);
+        storyElement.appendChild(sentenceElement);
+    }
+
+    document.querySelector('.content').appendChild(storyElement);
+    document.querySelector('.menu').appendChild(menuButton);
+
+    return menuButton;
+}
+
+/**
+ * Создание элемента истории
+ * @param {string} sheetId - ID таблицы
+ * @param {string} title - Заголовок истории
+ * @returns {HTMLElement} Элемент истории
+ */
+function createStoryElement(sheetId, title) {
+    const storyElement = document.createElement('section');
+    storyElement.className = 'story';
+    storyElement.dataset.storyId = sheetId;
+    storyElement.style.display = 'none';
 
     const heading = document.createElement('h1');
     heading.textContent = title;
-    storyContainer.appendChild(heading);
+    storyElement.appendChild(heading);
 
-    for (let i = 3; i < lines.length; i++) {
-        const line = lines[i].trim();
-        const [id, es, en] = parseCsvLine(line);
+    return storyElement;
+}
 
-        if (!id || !es || !en || es === '-error-') {
-            continue;
-        }
+/**
+ * Создание кнопки меню
+ * @param {string} title - Заголовок кнопки
+ * @param {HTMLElement} storyElement - Связанный элемент истории
+ * @returns {HTMLElement} Кнопка меню
+ */
+function createMenuButton(title, storyElement) {
+    const menuButton = document.createElement('div');
+    menuButton.className = 'menu-button';
+    menuButton.textContent = title;
+    menuButton.style.display = APP_STATE.menuIsVisible ? 'block' : 'none';
 
-        const container = document.createElement('div');
-        container.className = 'container-sentence sentence';
-
-        const vertical = document.createElement('div');
-        vertical.className = 'vertical-sentence';
-        vertical.dataset.audio = `audio/${sheetId}/${id}.m4a`;
-
-        const esP = document.createElement('p');
-        esP.className = 'es';
-        esP.textContent = es;
-
-        const enP = document.createElement('p');
-        enP.className = 'en';
-        enP.textContent = en;
-
-        vertical.appendChild(esP);
-        vertical.appendChild(enP);
-
-        const toggle = document.createElement('div');
-        toggle.className = 'toggle';
-        toggle.innerHTML = `
-            <div class="labels">
-                <span class="off">off</span>
-                <span class="on">on</span>
-            </div>
-            <div class="handle">es</div>
-        `;
-
-        toggle.addEventListener('click', function () {
-            const isActive = this.classList.toggle('active');
-
-            if (isActive) {
-                esP.classList.add('blurred');
-                esP.style.setProperty('filter', 'blur(3px)', 'important');
-            } else {
-                esP.classList.remove('blurred');
-                esP.style.setProperty('filter', 'none', 'important');
-            }
-        });
-
-        container.appendChild(vertical);
-        container.appendChild(toggle);
-        storyContainer.appendChild(container);
-    }
-
-    document.querySelector('.content').appendChild(storyContainer);
-
-    const menuBtn = document.createElement('div');
-    menuBtn.className = 'menu-button';
-    menuBtn.textContent = title;
-    menuBtn.style.display = menuIsVisible ? 'block' : 'none';
-    menuBtn.addEventListener('click', () => {
+    menuButton.addEventListener('click', () => {
+        // Скрываем все истории и показываем выбранную
         document.querySelectorAll('.story').forEach(story => {
             story.style.display = 'none';
         });
 
         syncLocalTogglesToGlobal();
-        storyContainer.style.display = 'flex';
-        applyGlobalBlurToStory(storyContainer);
+        storyElement.style.display = 'flex';
+        applyGlobalBlurToStory(storyElement);
 
-        if (window.innerWidth < 768) {
-            menuIsVisible = true;
-            toggleMenuButtons();
+        if (APP_STATE.isMobile) {
+            APP_STATE.menuIsVisible = false;
+            document.querySelector('.inner-menu-title').textContent = menuButton.textContent;
+            storyElement.querySelector('h1').textContent = '';
+            updateMenuVisibility();
             window.scrollTo({top: 0, behavior: 'smooth'});
-
-            const title = storyContainer.querySelector('h1');
-            const innerMenuTitle = document.querySelector('.inner-menu-title');
-            innerMenuTitle.textContent = menuBtn.textContent;
-            title.textContent = '';
         }
     });
-    document.querySelector('.menu').appendChild(menuBtn);
 
-    return menuBtn;
+    return menuButton;
 }
 
-function toggleMenuButtons() {
-    const buttons = document.querySelectorAll('.menu-button');
-    const menu = document.querySelector('.menu');
+/**
+ * Создание элемента предложения
+ * @param {string} sheetId - ID таблицы
+ * @param {string} id - ID предложения
+ * @param {string} esText - Текст на испанском
+ * @param {string} enText - Текст на английском
+ * @returns {HTMLElement} Элемент предложения
+ */
+function createSentenceElement(sheetId, id, esText, enText) {
+    const container = document.createElement('div');
+    container.className = 'container-sentence sentence';
 
-    menuIsVisible = !menuIsVisible;
+    const verticalElement = document.createElement('div');
+    verticalElement.className = 'vertical-sentence';
+    verticalElement.dataset.audio = `audio/${sheetId}/${id}.m4a`;
 
-    buttons.forEach(menuBtn => {
-        let alreadyIsVisible = document.querySelector('.inner-menu-title').textContent === menuBtn.textContent;
-        menuBtn.style.display = menuIsVisible && !alreadyIsVisible ? 'block' : 'none';
+    const esElement = document.createElement('p');
+    esElement.className = 'es';
+    esElement.textContent = esText;
+
+    const enElement = document.createElement('p');
+    enElement.className = 'en';
+    enElement.textContent = enText;
+
+    verticalElement.appendChild(esElement);
+    verticalElement.appendChild(enElement);
+
+    const toggleElement = createToggleElement(esElement);
+
+    container.appendChild(verticalElement);
+    container.appendChild(toggleElement);
+
+    return container;
+}
+
+/**
+ * Создание элемента переключателя
+ * @param {HTMLElement} esElement - Элемент испанского текста
+ * @returns {HTMLElement} Элемент переключателя
+ */
+function createToggleElement(esElement) {
+    const toggle = document.createElement('div');
+    toggle.className = 'toggle';
+    toggle.innerHTML = `
+    <div class="labels">
+      <span class="off">off</span>
+      <span class="on">on</span>
+    </div>
+    <div class="handle">es</div>
+  `;
+
+    toggle.addEventListener('click', function() {
+        const isActive = this.classList.toggle('active');
+        updateElementBlur(esElement, isActive);
     });
 
-    if (menu) {
-        if (window.innerWidth >= 768) {
-            menu.style.maxHeight = menuIsVisible ? '100vh' : '3.5rem';
-            menu.style.height = menuIsVisible ? '100vh' : '100%';
-        } else {
-            menu.style.maxHeight = '';
-            menu.style.height = '';
-        }
+    return toggle;
+}
+
+/**
+ * Обновление состояния размытия элемента
+ * @param {HTMLElement} element - Элемент для размытия
+ * @param {boolean} shouldBlur - Нужно ли применять размытие
+ */
+function updateElementBlur(element, shouldBlur) {
+    if (shouldBlur) {
+        element.classList.add('blurred');
+        element.style.setProperty('filter', 'blur(3px)', 'important');
+    } else {
+        element.classList.remove('blurred');
+        element.style.setProperty('filter', 'none', 'important');
     }
 }
 
+/**
+ * Синхронизация локальных переключателей с глобальным состоянием
+ */
 function syncLocalTogglesToGlobal() {
     document.querySelectorAll('.story').forEach(story => {
         story.querySelectorAll('.container-sentence').forEach(sentence => {
             const toggle = sentence.querySelector('.toggle');
-            const esBlock = sentence.querySelector('.es');
+            const esElement = sentence.querySelector('.es');
 
-            if (blurOn) {
-                toggle.classList.add('active');
-                esBlock.classList.add('blurred');
-                esBlock.style.setProperty('filter', 'blur(3px)', 'important');
-            } else {
-                toggle.classList.remove('active');
-                esBlock.classList.remove('blurred');
-                esBlock.style.setProperty('filter', 'none', 'important');
-            }
+            toggle.classList.toggle('active', APP_STATE.blurOn);
+            updateElementBlur(esElement, APP_STATE.blurOn);
         });
     });
 }
 
-function applyGlobalBlurToStory(storyContainer) {
-    storyContainer.querySelectorAll('.container-sentence').forEach(sentence => {
-        const esBlock = sentence.querySelector('.es');
-        if (blurOn) {
-            esBlock.classList.add('blurred');
-        } else {
-            esBlock.classList.remove('blurred');
-        }
+/**
+ * Применение глобального размытия к истории
+ * @param {HTMLElement} storyElement - Элемент истории
+ */
+function applyGlobalBlurToStory(storyElement) {
+    storyElement.querySelectorAll('.container-sentence').forEach(sentence => {
+        const esElement = sentence.querySelector('.es');
+        updateElementBlur(esElement, APP_STATE.blurOn);
     });
 }
